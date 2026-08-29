@@ -1,182 +1,197 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DataManager {
+  static final SupabaseClient _supabase = Supabase.instance.client;
+  
   static int balance = 500;
+  static List<Map<String, dynamic>> shopProducts = [];
+  static List<Map<String, dynamic>> newsList = [];
+  static List<Map<String, dynamic>> lotteryList = [];
+  static Map<String, dynamic> lotteryBanner = {};
+  static List<Map<String, dynamic>> winnersList = [];
+  static Map<String, dynamic> userData = {};
+  static List<Map<String, dynamic>> ordersList = [];
+  static List<Map<String, dynamic>> gameHistory = [];
+  static List<Map<String, dynamic>> allUsers = []; // برای ادمین
 
-  static List<Map<String, dynamic>> shopProducts = [
-    {
-      'name': 'کارت هدیه ۵۰۰ هزار تومانی دیجی‌کالا',
-      'desc': 'کد تخفیف ۱۰۰ درصدی برای خرید از دیجی‌کالا.',
-      'price': 500,
-      'category': 'کارت هدیه',
-      'image': 'https://img.freepik.com/free-vector/gift-card-template-with-golden-ribbon_23-2148287514.jpg'
-    },
-    {
-      'name': 'تی‌شرت اختصاصی سکه چی',
-      'desc': 'تی‌شرت با کیفیت پنبه‌ای با لوگوی طلایی سکه چی.',
-      'price': 1200,
-      'category': 'پوشاک',
-      'image': 'https://img.freepik.com/free-photo/black-t-shirt-with-copy-space-crescent-moon_23-2148829937.jpg'
-    },
-    {
-      'name': 'پاوربانک ۲۰۰۰۰ شیائومی',
-      'desc': 'شارژر همراه قدرتمند با قابلیت فست شارژ.',
-      'price': 2500,
-      'category': 'کالای دیجیتال',
-      'image': 'https://img.freepik.com/free-photo/portable-power-bank-smartphone_23-2148943538.jpg'
-    },
-    {
-      'name': 'هندزفری بلوتوثی هایلو',
-      'desc': 'صدای شفاف و باتری قدرتمند برای استفاده روزمره.',
-      'price': 1800,
-      'category': 'کالای دیجیتال',
-      'image': 'https://img.freepik.com/free-photo/wireless-earbuds-with-charging-case_23-2148970163.jpg'
-    },
-  ];
-
-  static List<Map<String, dynamic>> newsList = [
-    {
-      'title': 'جشنواره طلایی تابستانه',
-      'description': 'با انجام بازی‌ها در این هفته، ۲ برابر سکه جایزه بگیرید.',
-      'date': '۱ ساعت پیش',
-      'icon_code': 0xe133, // celebration
-      'isNew': true,
-    },
-    {
-      'title': 'اضافه شدن بازی جدید: حدس کلمات',
-      'description': 'هم‌اکنون می‌توانید بازی حدس کلمات را در بخش بازی‌ها تجربه کنید و سکه ببرید.',
-      'date': 'دیروز',
-      'icon_code': 0xe2af, // games
-      'isNew': false,
-    },
-  ];
-
-  static List<Map<String, dynamic>> lotteryList = [
-    {
-      'title': 'قرعه‌کشی بزرگ ماهانه',
-      'prize': 'یک دستگاه کنسول PS5',
-      'ticketPrice': 200,
-      'icon_code': 0xe6ad, // videogame_asset
-      'date': '۱۵ شهریور ۱۴۰۵',
-      'color_value': 0xFF3F51B5 // indigo
-    },
-    {
-      'title': 'قرعه‌کشی هفتگی',
-      'prize': 'کارت هدیه ۱۰ میلیون تومانی',
-      'ticketPrice': 50,
-      'icon_code': 0xe13f, // card_giftcard
-      'date': 'جمعه هر هفته',
-      'color_value': 0xFFE91E63 // pink
-    },
-  ];
-
-  static Map<String, dynamic> lotteryBanner = {
-    'title': 'قرعه‌کشی طلایی این هفته',
-    'subtitle': 'جایزه ویژه: آیفون ۱۵ پرو مکس',
-    'image': 'https://img.freepik.com/free-vector/golden-confetti-background_23-2148287515.jpg',
+  static Map<String, dynamic> appContent = {
+    'security_policy': 'اطلاعات شما محفوظ است.',
+    'support_info': 'پشتیبانی: ۰۹۹۲۷۸۹۱۶۰۸',
   };
 
-  static List<Map<String, dynamic>> winnersList = [
-    {'name': 'علی محمدی', 'prize': 'کارت هدیه ۵ میلیونی', 'date': '۱۴۰۵/۰۵/۲۰'},
-    {'name': 'سارا احمدی', 'prize': 'سکه تمام بهار آزادی', 'date': '۱۴۰۵/۰۵/۱۵'},
-    {'name': 'رضا حسینی', 'prize': 'پاوربانک ۲۰۰۰۰', 'date': '۱۴۰۵/۰۵/۱۰'},
+  static List<Map<String, dynamic>> coinPackages = [
+    {'name': 'بسته پایه', 'coins': 1000, 'price': '۱۰,۰۰۰ تومان', 'icon': Icons.monetization_on},
+    {'name': 'بسته ویژه', 'coins': 5000, 'price': '۴۵,۰۰۰ تومان', 'icon': Icons.diamond},
+    {'name': 'بسته حرفه‌ای', 'coins': 15000, 'price': '۱۲۰,۰۰۰ تومان', 'icon': Icons.auto_awesome},
   ];
-
-  static Map<String, dynamic> userData = {
-    'name': 'کاربر جدید',
-    'username': 'guest',
-    'phone': '',
-    'password': '',
-    'joinDate': '۱۴۰۵/۰۱/۰۱',
-  };
 
   static Map<String, dynamic> gameSettings = {
     'entryFee': 50,
     'winReward': 15,
+    'activeGames': {
+      'مار و پله': true, 'منچ سکه‌ای': true, 'ضربه طلایی': true,
+      'کوییز طلایی': true, 'حدس عدد جادویی': true, 'حافظه برتر': true, 'گردونه شانس': true,
+    }
   };
 
-  // متدهای منطق بازی و کیف پول
-  static bool canPlay() {
-    return balance >= gameSettings['entryFee'];
-  }
+  // --- متدهای ارتباط با سرور (Supabase) ---
 
-  static Future<void> deductEntryFee() async {
-    balance -= (gameSettings['entryFee'] as int);
-    await saveData();
-  }
-
-  static Future<void> addWinReward() async {
-    // بازگشت هزینه ورودی + ۱۵ سکه سود
-    balance += (gameSettings['entryFee'] as int) + (gameSettings['winReward'] as int);
-    await saveData();
-  }
-
-  static String getCurrencyValue() {
-    return "${balance * 1000} تومان";
-  }
-
-  // ذخیره و بارگذاری
-  static Future<void> saveData() async {
+  static Future<bool> checkConnection() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('user_balance', balance);
-      await prefs.setString('game_settings', jsonEncode(gameSettings));
-
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/sekkeh_data.json');
-      
-      Map<String, dynamic> allData = {
-        'shopProducts': shopProducts,
-        'newsList': newsList,
-        'lotteryList': lotteryList,
-        'lotteryBanner': lotteryBanner,
-        'winnersList': winnersList,
-        'userData': userData,
-      };
-      
-      await file.writeAsString(jsonEncode(allData));
+      await _supabase.from('global_config').select('id').limit(1);
+      return true;
     } catch (e) {
-      debugPrint("خطا در ذخیره: $e");
+      debugPrint("خطای اتصال به Supabase: $e");
+      return false;
     }
   }
 
   static Future<void> loadData() async {
     try {
+      // ۱. بارگذاری اطلاعات کاربر از لوکال (برای تشخیص ورود قبلی)
       final prefs = await SharedPreferences.getInstance();
-      balance = prefs.getInt('user_balance') ?? 500;
+      String? savedPhone = prefs.getString('user_phone');
       
-      String? settingsJson = prefs.getString('game_settings');
-      if (settingsJson != null) {
-        gameSettings = jsonDecode(settingsJson);
+      if (savedPhone != null) {
+        await syncUserWithServer(savedPhone);
       }
 
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/sekkeh_data.json');
+      // ۲. بارگذاری اطلاعات عمومی اپلیکیشن از سرور (جدول global_config)
+      final List<dynamic> config = await _supabase.from('global_config').select();
       
-      if (await file.exists()) {
-        String content = await file.readAsString();
-        Map<String, dynamic> allData = jsonDecode(content);
-        shopProducts = List<Map<String, dynamic>>.from(allData['shopProducts']);
-        newsList = List<Map<String, dynamic>>.from(allData['newsList']);
-        if (allData.containsKey('lotteryList')) {
-          lotteryList = List<Map<String, dynamic>>.from(allData['lotteryList']);
+      for (var row in config) {
+        String id = row['id'];
+        Map<String, dynamic> data = row['data'];
+        
+        if (id == 'shop') shopProducts = List<Map<String, dynamic>>.from(data['items']);
+        if (id == 'news') newsList = List<Map<String, dynamic>>.from(data['items']);
+        if (id == 'lottery') {
+          lotteryList = List<Map<String, dynamic>>.from(data['items']);
+          lotteryBanner = Map<String, dynamic>.from(data['banner']);
+          winnersList = List<Map<String, dynamic>>.from(data['winners']);
         }
-        if (allData.containsKey('lotteryBanner')) {
-          lotteryBanner = Map<String, dynamic>.from(allData['lotteryBanner']);
-        }
-        if (allData.containsKey('winnersList')) {
-          winnersList = List<Map<String, dynamic>>.from(allData['winnersList']);
-        }
-        if (allData.containsKey('userData')) {
-          userData = Map<String, dynamic>.from(allData['userData']);
+        if (id == 'settings') {
+          gameSettings = Map<String, dynamic>.from(data['gameSettings']);
+          appContent = Map<String, dynamic>.from(data['appContent']);
         }
       }
+      
+      // اگر دیتابیس خالی بود (اولین بار)، مقادیر پیش‌فرض را آپلود کن
+      if (config.isEmpty) await uploadInitialConfig();
+
     } catch (e) {
-      debugPrint("خطا در بارگذاری: $e");
+      debugPrint("خطا در بارگذاری آنلاین (Supabase): $e");
     }
+  }
+
+  static Future<void> syncUserWithServer(String phone) async {
+    try {
+      final List<dynamic> response = await _supabase
+          .from('users')
+          .select()
+          .eq('phone', phone);
+
+      if (response.isNotEmpty) {
+        final data = response.first;
+        userData = Map<String, dynamic>.from(data['user_data']);
+        balance = data['balance'];
+        ordersList = List<Map<String, dynamic>>.from(data['orders_list']);
+        gameHistory = List<Map<String, dynamic>>.from(data['game_history']);
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_phone', phone);
+      }
+    } catch (e) {
+      debugPrint("خطا در همگام‌سازی کاربر (Supabase): $e");
+    }
+  }
+
+  static Future<void> saveData() async {
+    if (userData['phone'] == null) return;
+    String phone = userData['phone'];
+
+    try {
+      // ذخیره اطلاعات کاربر در سرور (Upsert)
+      await _supabase.from('users').upsert({
+        'phone': phone,
+        'user_data': userData,
+        'balance': balance,
+        'orders_list': ordersList,
+        'game_history': gameHistory,
+        'last_seen': DateTime.now().toIso8601String(),
+      });
+
+      // ذخیره لوکال برای دفعات بعدی
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_phone', phone);
+    } catch (e) {
+      debugPrint("خطا در ذخیره آنلاین (Supabase): $e");
+    }
+  }
+
+  // متد مخصوص ادمین برای ذخیره تنظیمات در کلود
+  static Future<void> saveGlobalConfig() async {
+    await _supabase.from('global_config').upsert({'id': 'shop', 'data': {'items': shopProducts}});
+    await _supabase.from('global_config').upsert({'id': 'news', 'data': {'items': newsList}});
+    await _supabase.from('global_config').upsert({'id': 'lottery', 'data': {
+      'items': lotteryList,
+      'banner': lotteryBanner,
+      'winners': winnersList,
+    }});
+    await _supabase.from('global_config').upsert({'id': 'settings', 'data': {
+      'gameSettings': gameSettings,
+      'appContent': appContent,
+    }});
+  }
+
+  static Future<void> fetchAllUsersForAdmin() async {
+    try {
+      final List<dynamic> response = await _supabase.from('users').select();
+      allUsers = List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint("خطا در دریافت لیست کاربران (Supabase): $e");
+    }
+  }
+
+  // --- متدهای کمکی بازی ---
+
+  static bool canPlay(int stake) => balance >= stake;
+
+  static Future<void> deductEntryFee(int stake) async {
+    balance -= stake;
+    await saveData();
+  }
+
+  static Future<void> addWinReward(int stake) async {
+    int profit = (stake * 0.3).round();
+    balance += stake + profit;
+    await logGameEvent("برد در بازی", stake, profit);
+    await saveData();
+  }
+
+  static Future<void> logGameEvent(String title, int stake, int result) async {
+    gameHistory.insert(0, {
+      'title': title,
+      'stake': stake,
+      'result': result,
+      'date': DateTime.now().toString().substring(0, 10),
+      'time': DateTime.now().toString().substring(11, 16),
+    });
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_phone');
+    userData = {};
+    balance = 500;
+    ordersList = [];
+    gameHistory = [];
+  }
+
+  static Future<void> uploadInitialConfig() async {
+    await saveGlobalConfig();
   }
 }

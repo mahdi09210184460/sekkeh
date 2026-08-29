@@ -86,6 +86,16 @@ class _AwardsScreenState extends State<AwardsScreen> {
 
   Widget _buildFeaturedBanner() {
     final banner = DataManager.lotteryBanner;
+    String imagePath = banner['image'] ?? '';
+    ImageProvider imageProvider;
+    if (imagePath.startsWith('http')) {
+      imageProvider = NetworkImage(imagePath);
+    } else if (imagePath.isNotEmpty) {
+      imageProvider = FileImage(File(imagePath));
+    } else {
+      imageProvider = const NetworkImage('https://via.placeholder.com/400x200');
+    }
+
     return Container(
       margin: const EdgeInsets.all(15),
       height: 180,
@@ -93,7 +103,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(25),
         image: DecorationImage(
-          image: NetworkImage(banner['image']),
+          image: imageProvider,
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
         ),

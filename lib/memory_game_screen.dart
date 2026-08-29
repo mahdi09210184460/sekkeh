@@ -4,7 +4,8 @@ import 'data_manager.dart';
 import 'sound_manager.dart';
 
 class MemoryGameScreen extends StatefulWidget {
-  const MemoryGameScreen({super.key});
+  final int stake;
+  const MemoryGameScreen({super.key, required this.stake});
 
   @override
   State<MemoryGameScreen> createState() => _MemoryGameScreenState();
@@ -20,6 +21,8 @@ class _MemoryGameScreenState extends State<MemoryGameScreen> {
     Icons.diamond, Icons.diamond,
     Icons.account_balance_wallet, Icons.account_balance_wallet,
     Icons.auto_awesome, Icons.auto_awesome,
+    Icons.fastfood, Icons.fastfood,
+    Icons.directions_car, Icons.directions_car,
   ];
 
   late List<bool> _cardFlips;
@@ -27,7 +30,7 @@ class _MemoryGameScreenState extends State<MemoryGameScreen> {
   int? _firstSelectedIndex;
   bool _wait = false;
   int _score = 0;
-  int _seconds = 0;
+  int _seconds = 40; // تایمر معکوس برای سختی بیشتر
   Timer? _timer;
 
   @override
@@ -42,13 +45,22 @@ class _MemoryGameScreenState extends State<MemoryGameScreen> {
     _cardFlips = List.filled(_icons.length, false);
     _cardMatches = List.filled(_icons.length, false);
     _score = 0;
-    _seconds = 0;
+    _seconds = widget.stake > 500 ? 30 : 45; // سختی بر اساس مبلغ شرط
     _firstSelectedIndex = null;
   }
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() => _seconds++);
+      if (mounted) {
+        setState(() {
+          if (_seconds > 0) {
+            _seconds--;
+          } else {
+            _timer?.cancel();
+            _endGame(false);
+          }
+        });
+      }
     });
   }
 
@@ -87,44 +99,42 @@ class _MemoryGameScreenState extends State<MemoryGameScreen> {
     }
   }
 
-  void _checkWin() async {
+  void _checkWin() {
     if (_cardMatches.every((element) => element == true)) {
-      _timer?.cancel();
-      await SoundManager.playWin();
-      await DataManager.addWinReward();
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('آفرین! شما پیروز شدید 🎉', textAlign: TextAlign.center),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.psychology, size: 70, color: Colors.purple),
-                const SizedBox(height: 15),
-                Text('زمان شما: $_seconds ثانیه'),
-                Text('امتیاز نهایی: $_score'),
-                const Divider(),
-                const Text('۱۵ سکه سود به حساب شما واریز شد.'),
-              ],
-            ),
-            actions: [
-              Center(
-                child: ElevatedButton(
-                  onPressed: () { Navigator.pop(context); Navigator.pop(context); },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[800]),
-                  child: const Text('تایید و بازگشت'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      _endGame(true);
     }
+  }
+
+  void _endGame(bool won) async {
+    _timer?.cancel();
+    if (won) {
+      await SoundManager.playWin();
+      await DataManager.addWinReward(widget.stake);
+    } else {
+      await SoundManager.playLose();
+      await DataManager.logGameEvent("باخت در حافظه برتر", widget.stake, -widget.stake);
+    }
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(won ? 'حافظه فوق‌العاده! 🎉' : 'زمان تمام شد! ❌', textAlign: TextAlign.center),
+          content: Text(won ? 'شما همه کارت‌ها را پیدا کردید و سود واریز شد.' : 'سرعت عمل شما کافی نبود.'),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () { Navigator.pop(context); Navigator.pop(context); },
+                child: const Text('بازگشت'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -137,30 +147,25 @@ class _MemoryGameScreenState extends State<MemoryGameScreen> {
       child: Scaffold(
         backgroundColor: Colors.grey[100],
         appBar: AppBar(
-          title: const Text('بازی حافظه برتر'),
+          title: const Text('حافظه برتر (سخت)'),
           backgroundColor: Colors.orange[800],
           foregroundColor: Colors.white,
+          actions: [
+            Center(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Text('زمان: $_seconds', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ))
+          ],
         ),
         body: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: Colors.white,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatCard('زمان', '$_seconds ثانیه', Icons.timer),
-                  _buildStatCard('امتیاز', '$_score', Icons.stars),
-                ],
-              ),
-            ),
             Expanded(
               child: GridView.builder(
                 padding: const EdgeInsets.all(15),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                 ),
                 itemCount: _icons.length,
                 itemBuilder: (context, index) {
@@ -169,26 +174,14 @@ class _MemoryGameScreenState extends State<MemoryGameScreen> {
                     onTap: () => _onCardTap(index),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
                       decoration: BoxDecoration(
                         color: isVisible ? Colors.white : Colors.orange[800],
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3)),
-                        ],
-                        border: Border.all(
-                          color: isVisible ? Colors.orange : Colors.orange[900]!,
-                          width: 2,
-                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange[900]!, width: 2),
                       ),
                       child: isVisible
-                          ? Icon(_icons[index], size: 35, color: Colors.orange[800])
-                          : Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                              ),
-                            ),
+                          ? Icon(_icons[index], size: 30, color: Colors.orange[800])
+                          : const Icon(Icons.help_outline, size: 30, color: Colors.white),
                     ),
                   );
                 },
@@ -197,17 +190,6 @@ class _MemoryGameScreenState extends State<MemoryGameScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.orange[800]),
-        const SizedBox(height: 5),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ],
     );
   }
 }

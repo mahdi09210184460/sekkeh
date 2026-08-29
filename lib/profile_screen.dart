@@ -1,4 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'my_orders_screen.dart';
+import 'charge_screen.dart';
+import 'game_history_screen.dart';
+import 'app_info_screen.dart';
+import 'register_screen.dart';
 import 'data_manager.dart';
 import 'admin_panel_screen.dart';
 
@@ -11,6 +18,84 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   int _adminClickCount = 0;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickProfileImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        DataManager.userData['profileImage'] = image.path;
+      });
+      await DataManager.saveData();
+    }
+  }
+
+  void _removeProfileImage() async {
+    setState(() {
+      DataManager.userData['profileImage'] = null;
+    });
+    await DataManager.saveData();
+  }
+
+  void _showImageOptions() {
+    // ...
+  }
+
+  ImageProvider _getProfileImage() {
+    String? path = DataManager.userData['profileImage'];
+    if (path == null || path.isEmpty) {
+      return const NetworkImage('https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg');
+    }
+    return FileImage(File(path));
+  }
+
+  void _showAdminLogin() {
+    final userCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('ورود به پنل مدیریت', textAlign: TextAlign.center),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: userCtrl,
+                decoration: const InputDecoration(labelText: 'نام کاربری ادمین', prefixIcon: Icon(Icons.admin_panel_settings)),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: passCtrl,
+                decoration: const InputDecoration(labelText: 'رمز عبور', prefixIcon: Icon(Icons.lock)),
+                obscureText: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+            ElevatedButton(
+              onPressed: () {
+                if (userCtrl.text == 'amin13912000' && passCtrl.text == 'amin1374') {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminPanelScreen()));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('دسترسی غیرمجاز!'), backgroundColor: Colors.red),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.black87, foregroundColor: Colors.white),
+              child: const Text('ورود به پنل'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _editProfile() {
     final nameCtrl = TextEditingController(text: DataManager.userData['name']);
@@ -107,19 +192,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            setState(() => _adminClickCount++);
-                            if (_adminClickCount >= 5) {
-                              _adminClickCount = 0;
-                              Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminPanelScreen()));
+                            // فقط اگر شماره موبایل کاربر برابر با شماره ادمین باشد، اجازه کلیک برای ورود داده می‌شود
+                            if (DataManager.userData['phone'] == '09927891608') {
+                              setState(() => _adminClickCount++);
+                              if (_adminClickCount >= 20) {
+                                setState(() => _adminClickCount = 0);
+                                _showAdminLogin();
+                              }
                             }
                           },
                           child: Container(
                             padding: const EdgeInsets.all(5),
                             decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: CircleAvatar(
-                              radius: 55,
-                              backgroundColor: Colors.orange[100],
-                              backgroundImage: const NetworkImage('https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg'),
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 55,
+                                  backgroundColor: Colors.orange[100],
+                                  backgroundImage: _getProfileImage(),
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: _showImageOptions,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(color: Colors.orange[800], shape: BoxShape.circle),
+                                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -174,7 +278,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                       ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ChargeScreen())).then((_) => setState(() {}));
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange[800],
                           foregroundColor: Colors.white,
@@ -208,12 +314,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    _buildMenuOption(Icons.history, 'تاریخچه بازی‌ها', Colors.blue, () {}),
-                    _buildMenuOption(Icons.shopping_cart_checkout, 'سفارشات من', Colors.green, () {}),
-                    _buildMenuOption(Icons.security, 'امنیت و حریم خصوصی', Colors.purple, () {}),
-                    _buildMenuOption(Icons.help_center, 'پشتیبانی و تماس با ما', Colors.teal, () {}),
-                    _buildMenuOption(Icons.logout, 'خروج از حساب کاربری', Colors.red, () {
-                      Navigator.pop(context);
+                    _buildMenuOption(Icons.history, 'تاریخچه بازی‌ها', Colors.blue, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const GameHistoryScreen()));
+                    }),
+                    _buildMenuOption(Icons.shopping_cart_checkout, 'سفارشات من', Colors.green, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const MyOrdersScreen()));
+                    }),
+                    _buildMenuOption(Icons.security, 'امنیت و حریم خصوصی', Colors.purple, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AppInfoScreen(mode: 'security')));
+                    }),
+                    _buildMenuOption(Icons.help_center, 'پشتیبانی و تماس با ما', Colors.teal, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AppInfoScreen(mode: 'support')));
+                    }),
+                    _buildMenuOption(Icons.logout, 'خروج از حساب کاربری', Colors.red, () async {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Directionality(
+                          textDirection: TextDirection.rtl,
+                          child: AlertDialog(
+                            title: const Text('خروج از حساب'),
+                            content: const Text('آیا می‌خواهید از حساب خود خارج شوید؟ تمام اطلاعات شما ریست خواهد شد.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  await DataManager.logout();
+                                  if (!mounted) return;
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                                    (route) => false,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                child: const Text('خروج و ریست'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     }),
                   ],
                 ),

@@ -18,13 +18,15 @@ class _LuckyWheelScreenState extends State<LuckyWheelScreen> with SingleTickerPr
 
   final List<Map<String, dynamic>> _prizes = [
     {'label': '۵ سکه', 'value': 5, 'color': Colors.red},
-    {'label': '۱۰ سکه', 'value': 10, 'color': Colors.blue},
     {'label': '۰ سکه', 'value': 0, 'color': Colors.grey},
+    {'label': '۱۰ سکه', 'value': 10, 'color': Colors.blue},
+    {'label': 'پوچ', 'value': 0, 'color': Colors.black87},
     {'label': '۵۰ سکه', 'value': 50, 'color': Colors.amber},
+    {'label': 'باخت ۱۰۰', 'value': -100, 'color': Colors.redAccent},
     {'label': '۱۵ سکه', 'value': 15, 'color': Colors.green},
-    {'label': '۲۰ سکه', 'value': 20, 'color': Colors.purple},
+    {'label': '۰ سکه', 'value': 0, 'color': Colors.grey},
     {'label': '۲ سکه', 'value': 2, 'color': Colors.orange},
-    {'label': '۱۰۰ سکه', 'value': 100, 'color': Colors.redAccent},
+    {'label': 'جایزه ویژه', 'value': 500, 'color': Colors.purple},
   ];
 
   @override
@@ -60,14 +62,17 @@ class _LuckyWheelScreenState extends State<LuckyWheelScreen> with SingleTickerPr
     String prizeLabel = _prizes[index]['label'];
     int prizeValue = _prizes[index]['value'];
 
+    bool isWin = prizeValue > 50; // چون ورودی الان ۱۰۰ شده (در مرحله بعد اصلاح می‌کنیم)
+
     if (prizeValue > 0) {
       await SoundManager.playWin();
     } else {
       await SoundManager.playLose();
     }
 
-    // اضافه کردن جایزه به موجودی دائمی
+    // اضافه کردن/کسر جایزه به موجودی دائمی
     DataManager.balance += prizeValue;
+    await DataManager.logGameEvent("گردونه شانس", 100, prizeValue);
     await DataManager.saveData();
 
     if (!mounted) return;
@@ -76,13 +81,32 @@ class _LuckyWheelScreenState extends State<LuckyWheelScreen> with SingleTickerPr
       builder: (context) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: const Text('نتیجه گردونه'),
-          content: Text('تبریک! شما برنده $prizeLabel شدید!'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(prizeValue > 0 ? 'نتیجه گردونه 🎁' : 'بدشانسی! 💀', textAlign: TextAlign.center),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                prizeValue > 0 ? Icons.emoji_events : Icons.sentiment_very_dissatisfied,
+                size: 60,
+                color: prizeValue > 0 ? Colors.amber : Colors.red,
+              ),
+              const SizedBox(height: 15),
+              Text(
+                prizeValue >= 0 
+                  ? 'تبریک! شما برنده $prizeLabel شدید!' 
+                  : 'متأسفانه ۱۰۰ سکه از حساب شما کسر شد!',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
           actions: [
-            ElevatedButton(
-              onPressed: () { Navigator.pop(context); Navigator.pop(context); },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[800]),
-              child: const Text('تایید و بازگشت'),
+            Center(
+              child: ElevatedButton(
+                onPressed: () { Navigator.pop(context); Navigator.pop(context); },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[800]),
+                child: const Text('تایید و بازگشت'),
+              ),
             ),
           ],
         ),

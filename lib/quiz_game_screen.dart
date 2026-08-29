@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'data_manager.dart';
 import 'sound_manager.dart';
 
 class QuizGameScreen extends StatefulWidget {
-  const QuizGameScreen({super.key});
+  final int stake;
+  const QuizGameScreen({super.key, required this.stake});
 
   @override
   State<QuizGameScreen> createState() => _QuizGameScreenState();
@@ -13,6 +15,8 @@ class _QuizGameScreenState extends State<QuizGameScreen> {
   int _currentQuestion = 0;
   int? _selectedOption;
   bool _isAnswered = false;
+  int _timeLeft = 10;
+  Timer? _timer;
 
   final List<Map<String, dynamic>> _questions = [
     {
@@ -32,8 +36,28 @@ class _QuizGameScreenState extends State<QuizGameScreen> {
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    setState(() => _timeLeft = 10);
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_timeLeft > 0) {
+        setState(() => _timeLeft--);
+      } else {
+        _timer?.cancel();
+        _endGame(false); 
+      }
+    });
+  }
+
   void _answer(int index) {
     if (_isAnswered) return;
+    _timer?.cancel();
     SoundManager.playTap();
     setState(() {
       _selectedOption = index;
@@ -43,11 +67,14 @@ class _QuizGameScreenState extends State<QuizGameScreen> {
     Future.delayed(const Duration(milliseconds: 1000), () {
       if (index == _questions[_currentQuestion]['ans']) {
         if (_currentQuestion < _questions.length - 1) {
-          setState(() {
-            _currentQuestion++;
-            _selectedOption = null;
-            _isAnswered = false;
-          });
+          if (mounted) {
+            setState(() {
+              _currentQuestion++;
+              _selectedOption = null;
+              _isAnswered = false;
+            });
+            _startTimer();
+          }
         } else {
           _endGame(true);
         }
@@ -58,11 +85,13 @@ class _QuizGameScreenState extends State<QuizGameScreen> {
   }
 
   void _endGame(bool won) async {
+    _timer?.cancel();
     if (won) {
       await SoundManager.playWin();
-      await DataManager.addWinReward();
+      await DataManager.addWinReward(widget.stake);
     } else {
       await SoundManager.playLose();
+      await DataManager.logGameEvent("باخت در کوییز", widget.stake, -widget.stake);
     }
     if (!mounted) return;
     showDialog(
@@ -72,13 +101,13 @@ class _QuizGameScreenState extends State<QuizGameScreen> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(won ? 'نابغه سکه چی! 🎉' : 'کمی مطالعه بیشتر! ❌', textAlign: TextAlign.center),
+          title: Text(won ? 'نابغه سکه چی! 🎉' : 'زمان تمام شد یا پاسخ غلط! ❌', textAlign: TextAlign.center),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(won ? Icons.lightbulb : Icons.auto_stories, size: 70, color: won ? Colors.amber : Colors.grey),
+              Icon(won ? Icons.lightbulb : Icons.timer_off, size: 70, color: won ? Colors.amber : Colors.grey),
               const SizedBox(height: 15),
-              Text(won ? 'پاسخ‌های شما صحیح بود و ۱۵ سکه جایزه گرفتید.' : 'پاسخ اشتباه بود. دوباره تلاش کنید!'),
+              Text(won ? 'پاسخ‌های شما صحیح بود و سود شرط‌بندی واریز شد.' : 'متأسفانه باختید. دوباره تلاش کنید!'),
             ],
           ),
           actions: [
@@ -96,6 +125,12 @@ class _QuizGameScreenState extends State<QuizGameScreen> {
   }
 
   @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final question = _questions[_currentQuestion];
     return Directionality(
@@ -103,9 +138,15 @@ class _QuizGameScreenState extends State<QuizGameScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('کوییز طلایی'),
+          title: const Text('کوییز سرعتی'),
           backgroundColor: Colors.orange[800],
           foregroundColor: Colors.white,
+          actions: [
+            Center(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Text('زمان: $_timeLeft', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ))
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(25.0),

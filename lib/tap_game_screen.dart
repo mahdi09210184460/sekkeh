@@ -4,7 +4,8 @@ import 'data_manager.dart';
 import 'sound_manager.dart';
 
 class TapGameScreen extends StatefulWidget {
-  const TapGameScreen({super.key});
+  final int stake;
+  const TapGameScreen({super.key, required this.stake});
 
   @override
   State<TapGameScreen> createState() => _TapGameScreenState();
@@ -12,7 +13,7 @@ class TapGameScreen extends StatefulWidget {
 
 class _TapGameScreenState extends State<TapGameScreen> {
   int _taps = 0;
-  int _timeLeft = 10; // افزایش زمان به ۱۰ ثانیه برای جذابیت بیشتر
+  int _timeLeft = 7; // کاهش زمان از ۱۰ به ۷ ثانیه (سخت‌تر)
   Timer? _timer;
   bool _gameStarted = false;
   double _scale = 1.0;
@@ -21,7 +22,7 @@ class _TapGameScreenState extends State<TapGameScreen> {
     setState(() {
       _gameStarted = true;
       _taps = 0;
-      _timeLeft = 10;
+      _timeLeft = 7;
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timeLeft > 0) {
@@ -46,12 +47,13 @@ class _TapGameScreenState extends State<TapGameScreen> {
   }
 
   void _endGame() async {
-    bool won = _taps >= 50; // چالش سخت‌تر: ۵۰ ضربه در ۱۰ ثانیه
+    bool won = _taps >= 60; // افزایش ضربه مورد نیاز به ۶۰ (سخت‌تر)
     if (won) {
       await SoundManager.playWin();
-      await DataManager.addWinReward();
+      await DataManager.addWinReward(widget.stake);
     } else {
       await SoundManager.playLose();
+      await DataManager.logGameEvent("باخت در ضربه طلایی", widget.stake, -widget.stake);
     }
     if (!mounted) return;
     

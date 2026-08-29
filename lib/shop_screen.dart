@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'charge_screen.dart';
 import 'data_manager.dart';
 import 'sound_manager.dart';
 
@@ -13,7 +14,7 @@ class _ShopScreenState extends State<ShopScreen> with SingleTickerProviderStateM
   String _selectedCategory = 'همه';
   late TabController _tabController;
 
-  final List<String> _categories = ['همه', 'کالای دیجیتال', 'پوشاک', 'کارت هدیه'];
+  final List<String> _categories = ['همه', 'کالای دیجیتال', 'خدمات مجازی', 'پوشاک', 'کارت هدیه'];
 
   @override
   void initState() {
@@ -22,57 +23,154 @@ class _ShopScreenState extends State<ShopScreen> with SingleTickerProviderStateM
   }
 
   void _buyProduct(Map<String, dynamic> product) {
-    if (DataManager.balance < product['price']) {
-      SoundManager.playLose();
-      _showMessage('موجودی سکه شما کافی نیست! ❌', isError: true);
-      return;
-    }
+    int quantity = 1;
+    final targetCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-          title: const Text('تایید نهایی خرید', textAlign: TextAlign.center),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  image: DecorationImage(image: NetworkImage(product['image']), fit: BoxFit.cover),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          int totalPrice = product['price'] * quantity;
+          bool isVirtual = product['category'] == 'خدمات مجازی' || product['name'].contains('فالوور');
+
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              title: Text('خرید ${product['name']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // انتخاب تعداد
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('تعداد:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.add_circle, color: Colors.green),
+                              onPressed: () => setDialogState(() => quantity++),
+                            ),
+                            Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle, color: Colors.red),
+                              onPressed: () {
+                                if (quantity > 1) setDialogState(() => quantity--);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    // فیلد مخصوص خدمات مجازی (آیدی یا لینک)
+                    if (isVirtual) ...[
+                      TextField(
+                        controller: targetCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'آیدی پیج یا لینک مقصد',
+                          hintText: '@username / link...',
+                          prefixIcon: Icon(Icons.link),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    // توضیحات اضافی
+                    TextField(
+                      controller: noteCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'توضیحات یا یادداشت',
+                        hintText: 'مثلاً: سایز مدیوم، رنگ آبی و...',
+                        prefixIcon: Icon(Icons.note_alt),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // جمع کل
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(15)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('مبلغ قابل پرداخت:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Row(
+                            children: [
+                              Text('$totalPrice', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange[900])),
+                              const Icon(Icons.monetization_on, color: Colors.amber, size: 20),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-              Text('آیا از خرید "${product['name']}" اطمینان دارید؟', textAlign: TextAlign.center),
-              const SizedBox(height: 10),
-              Text(
-                'مبلغ ${product['price']} سکه از حساب شما کسر خواهد شد.',
-                style: TextStyle(fontSize: 14, color: Colors.orange[800], fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
-            ElevatedButton(
-              onPressed: () async {
-                setState(() {
-                  DataManager.balance -= product['price'] as int;
-                });
-                await DataManager.saveData();
-                await SoundManager.playWin();
-                if (!mounted) return;
-                Navigator.pop(context);
-                _showMessage('خرید با موفقیت انجام شد! 🎉');
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
-              child: const Text('تایید خرید'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (DataManager.balance < totalPrice) {
+                      SoundManager.playLose();
+                      Navigator.pop(context); // بستن دیالوگ خرید
+                      showDialog(
+                        context: context,
+                        builder: (context) => Directionality(
+                          textDirection: TextDirection.rtl,
+                          child: AlertDialog(
+                            title: const Text('موجودی ناکافی'),
+                            content: const Text('سکه کافی ندارید! آیا می‌خواهید حساب خود را شارژ کنید؟'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ChargeScreen())).then((_) => setState(() {}));
+                                },
+                                child: const Text('بله، شارژ حساب'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (isVirtual && targetCtrl.text.isEmpty) {
+                      _showMessage('لطفاً آیدی یا لینک مقصد را وارد کنید!', isError: true);
+                      return;
+                    }
+
+                    // ثبت سفارش در سیستم
+                    setState(() {
+                      DataManager.balance -= totalPrice;
+                      DataManager.ordersList.insert(0, {
+                        'productName': product['name'],
+                        'quantity': quantity,
+                        'totalPrice': totalPrice,
+                        'target': targetCtrl.text,
+                        'note': noteCtrl.text,
+                        'date': '۱۴۰۵/۰۶/۰۷', // تاریخ امروز
+                        'status': 'در حال بررسی'
+                      });
+                    });
+
+                    await DataManager.saveData();
+                    await SoundManager.playWin();
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    _showMessage('سفارش شما با موفقیت ثبت شد و در حال بررسی است! 🎉');
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                  child: const Text('تایید و پرداخت نهایی'),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -190,6 +288,16 @@ class _ShopScreenState extends State<ShopScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildProductItem(Map<String, dynamic> product) {
+    String imagePath = product['image'] ?? '';
+    Widget imageWidget;
+    if (imagePath.startsWith('http')) {
+      imageWidget = Image.network(imagePath, width: double.infinity, fit: BoxFit.cover);
+    } else if (imagePath.isNotEmpty) {
+      imageWidget = Image.file(File(imagePath), width: double.infinity, fit: BoxFit.cover);
+    } else {
+      imageWidget = const Icon(Icons.image, size: 50);
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -205,11 +313,7 @@ class _ShopScreenState extends State<ShopScreen> with SingleTickerProviderStateM
               borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
               child: Stack(
                 children: [
-                  Image.network(
-                    product['image'] ?? 'https://via.placeholder.com/150',
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+                  imageWidget,
                   Positioned(
                     top: 10,
                     left: 10,

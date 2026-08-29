@@ -109,29 +109,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: ElevatedButton(
                           onPressed: () async {
                             if (_formKey.currentState!.validate()) {
-                              // ذخیره اطلاعات کاربر
-                              DataManager.userData = {
-                                'name': _nameController.text,
-                                'username': _usernameController.text,
-                                'phone': _phoneController.text,
-                                'password': _passwordController.text,
-                                'joinDate': '۱۴۰۵/۰۶/۰۷', // تاریخ امروز فرضی
-                              };
+                              String phone = _phoneController.text;
                               
-                              // هدیه ۱۰۰ سکه برای ثبت‌نام اول
-                              DataManager.balance += 100;
-                              await DataManager.saveData();
+                              // تلاش برای همگام‌سازی با سرور (بررسی وجود کاربر)
+                              await DataManager.syncUserWithServer(phone);
+                              
+                              if (DataManager.userData.containsKey('phone')) {
+                                // کاربر از قبل در سرور وجود داشت
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('خوش آمدید! اطلاعات شما از سرور بازیابی شد ✨'), backgroundColor: Colors.blue),
+                                );
+                              } else {
+                                // ثبت‌نام جدید در سرور
+                                DataManager.userData = {
+                                  'name': _nameController.text,
+                                  'username': _usernameController.text,
+                                  'phone': phone,
+                                  'password': _passwordController.text,
+                                  'joinDate': DateTime.now().toString().substring(0, 10),
+                                  'profileImage': null,
+                                };
+                                DataManager.balance = 600; // ۵۰۰ اولیه + ۱۰۰ هدیه
+                                
+                                await DataManager.saveData();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('حساب کاربری شما در سرور ساخته شد 🎁'), backgroundColor: Colors.green),
+                                );
+                              }
 
                               if (!mounted) return;
-                              
-                              // نمایش پیام خوش‌آمدگویی
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('خوش آمدید! ۱۰۰ سکه هدیه ثبت‌نام به حساب شما اضافه شد 🎁'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(builder: (context) => const HomeHubScreen()),

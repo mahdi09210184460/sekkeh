@@ -58,10 +58,7 @@ class _HomeHubScreenState extends State<HomeHubScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      'معادل: ${DataManager.balance * 1000} تومان',
-                      style: const TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
+                    // نمایش معادل تومان حذف شد
                   ],
                 ),
               ),
