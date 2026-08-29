@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'my_orders_screen.dart';
-import 'charge_screen.dart';
-import 'game_history_screen.dart';
 import 'app_info_screen.dart';
 import 'register_screen.dart';
 import 'data_manager.dart';
@@ -30,21 +28,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _removeProfileImage() async {
-    setState(() {
-      DataManager.userData['profileImage'] = null;
-    });
-    await DataManager.saveData();
-  }
-
-  void _showImageOptions() {
-    // ...
-  }
-
   ImageProvider _getProfileImage() {
     String? path = DataManager.userData['profileImage'];
     if (path == null || path.isEmpty) {
-      return const NetworkImage('https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg');
+      String gender = DataManager.userData['gender'] ?? 'آقا';
+      return NetworkImage(gender == 'آقا'
+          ? 'https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg'
+          : 'https://img.freepik.com/free-vector/woman-avatar-profile-round-icon_24877-53559.jpg');
+    }
+    if (path.startsWith('http')) {
+      return NetworkImage(path);
     }
     return FileImage(File(path));
   }
@@ -171,7 +164,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: SingleChildScrollView(
           child: Column(
             children: [
-              // هدر پروفایل با طراحی زیبا
               Stack(
                 children: [
                   Container(
@@ -192,10 +184,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            // فقط اگر شماره موبایل کاربر برابر با شماره ادمین باشد، اجازه کلیک برای ورود داده می‌شود
                             if (DataManager.userData['phone'] == '09927891608') {
                               setState(() => _adminClickCount++);
-                              if (_adminClickCount >= 20) {
+                              if (_adminClickCount >= 3) {
                                 setState(() => _adminClickCount = 0);
                                 _showAdminLogin();
                               }
@@ -204,36 +195,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(5),
                             decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: 55,
-                                  backgroundColor: Colors.orange[100],
-                                  backgroundImage: _getProfileImage(),
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: GestureDetector(
-                                    onTap: _showImageOptions,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(color: Colors.orange[800], shape: BoxShape.circle),
-                                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: CircleAvatar(
+                              radius: 55,
+                              backgroundColor: Colors.orange[100],
+                              backgroundImage: _getProfileImage(),
                             ),
                           ),
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          user['name'],
+                          user['name'] ?? 'بی‌نام',
                           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
                         ),
                         Text(
-                          '@${user['username']}',
+                          '@${user['username'] ?? 'user'}',
                           style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                         ),
                       ],
@@ -244,79 +219,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               
               const SizedBox(height: 30),
               
-              // کارت موجودی کیف پول
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))
-                    ],
-                    border: Border.all(color: Colors.orange[50]!),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('موجودی کیف پول', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                          const SizedBox(height: 5),
-                          Row(
-                            children: [
-                              Text(
-                                '${DataManager.balance}',
-                                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.orange),
-                              ),
-                              const SizedBox(width: 5),
-                              const Icon(Icons.monetization_on, color: Colors.amber, size: 28),
-                            ],
-                          ),
-                        ],
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ChargeScreen())).then((_) => setState(() {}));
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange[800],
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        ),
-                        child: const Text('شارژ حساب'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 25),
-
-              // اطلاعات شخصی
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    _buildInfoTile(Icons.phone, 'شماره موبایل', user['phone']),
-                    _buildInfoTile(Icons.calendar_month, 'تاریخ عضویت', user['joinDate']),
-                    _buildInfoTile(Icons.verified_user, 'وضعیت حساب', 'تایید شده', isLast: true),
+                    _buildInfoTile(Icons.phone, 'شماره موبایل', user['phone'] ?? '---'),
+                    _buildInfoTile(Icons.calendar_month, 'تاریخ عضویت', user['joinDate'] ?? '---', isLast: true),
                   ],
                 ),
               ),
 
               const SizedBox(height: 25),
 
-              // گزینه‌های دیگر
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    _buildMenuOption(Icons.history, 'تاریخچه بازی‌ها', Colors.blue, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const GameHistoryScreen()));
-                    }),
                     _buildMenuOption(Icons.shopping_cart_checkout, 'سفارشات من', Colors.green, () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const MyOrdersScreen()));
                     }),
@@ -333,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           textDirection: TextDirection.rtl,
                           child: AlertDialog(
                             title: const Text('خروج از حساب'),
-                            content: const Text('آیا می‌خواهید از حساب خود خارج شوید؟ تمام اطلاعات شما ریست خواهد شد.'),
+                            content: const Text('آیا می‌خواهید از حساب خود خارج شوید؟'),
                             actions: [
                               TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
                               ElevatedButton(
@@ -347,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                child: const Text('خروج و ریست'),
+                                child: const Text('خروج نهایی'),
                               ),
                             ],
                           ),

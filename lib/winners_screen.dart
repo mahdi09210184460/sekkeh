@@ -33,7 +33,7 @@ class WinnersScreen extends StatelessWidget {
                   Icon(Icons.emoji_events, color: Colors.amber, size: 70),
                   SizedBox(height: 10),
                   Text(
-                    'برندگان خوش‌شانس سکه چی',
+                    'برندگان خوش‌شانس دیدینو',
                     style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   Text(
@@ -59,9 +59,9 @@ class WinnersScreen extends StatelessWidget {
                         backgroundColor: Colors.orange[100],
                         child: Icon(Icons.person, color: Colors.orange[800]),
                       ),
-                      title: Text(winner['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('جایزه: ${winner['prize']}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                      trailing: Text(winner['date'], style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      title: Text(winner['name'] ?? 'بی‌نام', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('جایزه: ${winner['prize'] ?? '---'}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+                      trailing: Text(winner['date'] ?? '---', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     ),
                   );
                 },
